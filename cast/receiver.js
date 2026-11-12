@@ -104,14 +104,10 @@
   }
 
   function clock() {
-    // 24 hours, as in Greece and most of Europe; 12 on a TV set to US English.
-    const twelve = lang === 'en' && /^en-US/i.test(navigator.language || '');
-    const time = new Date().toLocaleTimeString(lang === 'el' ? 'el-GR' : 'en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: twelve,
-    });
-    setText('.clock', time);
+    // Always the 24-hour clock ("21:47"), whatever the TV's own language.
+    const now = new Date();
+    const two = value => String(value).padStart(2, '0');
+    setText('.clock', `${two(now.getHours())}:${two(now.getMinutes())}`);
   }
 
   // ---- The station ----
