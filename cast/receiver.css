@@ -186,18 +186,24 @@ body:not([data-state='ready'])[data-layout='news'] .news {
   display: block;
 }
 
+/* Paused or tuning in, over the logo: faded in and out, never popping. */
 .overlay {
   position: absolute;
   inset: 0;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(18, 19, 15, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
 }
 
 body[data-state='paused'] .overlay.pause,
 body[data-state='tuning'] .overlay.spin {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.4s ease;
 }
 
 .pause-disc {

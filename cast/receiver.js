@@ -18,6 +18,9 @@
   const MAX_AGE_MS = 12 * 3600000;
   // Stopped or failed: the Ready screen after a moment (the phone may try another address).
   const READY_AFTER_MS = 4000;
+  // Tuning in shows (the turning dial) only when it takes longer than this: a quick station
+  // change or a short gap in the sound doesn't make it flash on and off.
+  const TUNING_AFTER_MS = 1000;
   // Everything moves a few pixels this often, so nothing burns into the TV.
   const DRIFT_MS = 60000;
   const MOST_HEADLINES = 21;
@@ -70,6 +73,7 @@
   /** [{ source, title, time, image? }], newest first; none: no news on the TV. */
   let headlines = [];
   let readyTimer = 0;
+  let tuningTimer = 0;
 
   // ---- Fitting the TV, and drifting so nothing burns in ----
 
@@ -200,6 +204,18 @@
 
   function setState(next) {
     clearTimeout(readyTimer);
+    if (next === 'tuning') {
+      if (state !== 'tuning' && !tuningTimer) {
+        tuningTimer = setTimeout(() => {
+          tuningTimer = 0;
+          state = 'tuning';
+          render();
+        }, TUNING_AFTER_MS);
+      }
+      return;
+    }
+    clearTimeout(tuningTimer);
+    tuningTimer = 0;
     if (next === 'ready' && station && state !== 'ready') {
       readyTimer = setTimeout(() => {
         // A late "stopped" (say, from a first address that failed) while a station plays on.
@@ -231,9 +247,29 @@
     const image = (metadata.images || [])[0];
     return {
       name: String(metadata.title || ''),
-      details: String(metadata.subtitle || ''),
+      // As the phone sends it (subtitle), or as kept for the TV's home screen (albumName, below).
+      details: String(metadata.subtitle || metadata.albumName || ''),
       logo: image && image.url ? String(image.url) : '',
     };
+  }
+
+  /**
+   * What the TV's own home screen shows while ReTune plays ("Pepper 96.6 · Google Cast · ReTune",
+   * with the station's logo): Android TV reads a music track's artist and album art. Without
+   * this, the phone's plain media info showed there as "Unknown" with no picture.
+   */
+  function forTvHomeScreen(media) {
+    const { MusicTrackMediaMetadata } = cast.framework.messages;
+    const before = media && media.metadata;
+    if (!before || !MusicTrackMediaMetadata) {
+      return;
+    }
+    const after = new MusicTrackMediaMetadata();
+    after.title = before.title;
+    after.artist = 'ReTune';
+    after.albumName = before.subtitle || '';
+    after.images = before.images || [];
+    media.metadata = after;
   }
 
   function playerIsBusy() {
@@ -436,6 +472,11 @@
         setState('tuning');
       } catch {
         // The 2-second check (syncWithPlayer) puts the screen right.
+      }
+      try {
+        forTvHomeScreen(request.media);
+      } catch {
+        // The phone's media info stays as it came.
       }
       return request;
     });
