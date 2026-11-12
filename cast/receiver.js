@@ -67,6 +67,10 @@
     });
 
   let lang = /^el\b/i.test(navigator.language || '') ? 'el' : 'en';
+  // The clock and the weather as set on the phone (Settings → TV screen); until it says: the
+  // 24-hour clock, and °F only on a TV set to US English.
+  let hour12 = false;
+  let fahrenheit = /^en-US/i.test(navigator.language || '');
   let state = 'ready';
   /** { name, details, logo } of the station loaded last, or null. */
   let station = null;
@@ -108,10 +112,36 @@
   }
 
   function clock() {
-    // Always the 24-hour clock ("21:47"), whatever the TV's own language.
+    // "21:47", or "9:47 PM" (Greek: "μ.μ.") with the 12-hour clock.
     const now = new Date();
-    const two = value => String(value).padStart(2, '0');
-    setText('.clock', `${two(now.getHours())}:${two(now.getMinutes())}`);
+    const hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const time = hour12 ? `${hours % 12 || 12}:${minutes}` : `${String(hours).padStart(2, '0')}:${minutes}`;
+    const half = !hour12 ? '' : lang === 'el' ? (hours < 12 ? 'π.μ.' : 'μ.μ.') : hours < 12 ? 'AM' : 'PM';
+    all('.clock').forEach(element => {
+      element.textContent = time;
+      if (half) {
+        const small = document.createElement('span');
+        small.className = 'half';
+        small.textContent = half;
+        element.appendChild(small);
+      }
+    });
+  }
+
+  /** The phone's choices for the clock (12 or 24 hours) and the weather (°C or °F), if it sent them. */
+  function takeChoices(data) {
+    if (data.lang === 'el' || data.lang === 'en') {
+      lang = data.lang;
+    }
+    if (data.clock === '12' || data.clock === '24') {
+      hour12 = data.clock === '12';
+    }
+    if (data.temperature === 'C' || data.temperature === 'F') {
+      fahrenheit = data.temperature === 'F';
+    }
+    clock();
+    showWeather();
   }
 
   // ---- The weather where the TV is, next to the clock ----
@@ -196,8 +226,6 @@
   }
 
   function showWeather() {
-    // °F on a TV set to US English, else °C.
-    const fahrenheit = /^en-US/i.test(navigator.language || '');
     all('.weather').forEach(element => {
       element.hidden = !weather;
       if (!weather) {
@@ -332,13 +360,13 @@
   /** Google Cast's player, once casting has started (none in a browser). */
   let player = null;
 
-  /** The station a media item describes: its name, the genre and city, its logo (and the language). */
+  /**
+   * The station a media item describes: its name, the genre and city, its logo (and the phone's
+   * language, clock and temperature choices).
+   */
   function stationFrom(media) {
     const metadata = (media && media.metadata) || {};
-    const custom = (media && media.customData) || {};
-    if (custom.lang === 'el' || custom.lang === 'en') {
-      lang = custom.lang;
-    }
+    takeChoices((media && media.customData) || {});
     const image = (metadata.images || [])[0];
     return {
       name: String(metadata.title || ''),
@@ -534,11 +562,9 @@
     return /^https?:\/\//i.test(value) && value.length <= 600 ? value : '';
   }
 
-  /** The phone's news: the headlines (none: no news on the TV) and ReTune's language. */
+  /** The phone's news: the headlines (none: no news on the TV), ReTune's language, clock and weather. */
   function onNews(data, sample = false) {
-    if (data.lang === 'el' || data.lang === 'en') {
-      lang = data.lang;
-    }
+    takeChoices(data);
     headlines = (Array.isArray(data.headlines) ? data.headlines : [])
       .filter(item => item && typeof item.title === 'string' && typeof item.source === 'string')
       .slice(0, MOST_HEADLINES)
@@ -626,7 +652,10 @@
   }
 
   function startDemo() {
-    const demo = new URLSearchParams(location.search).get('demo') || 'playing';
+    const query = new URLSearchParams(location.search);
+    const demo = query.get('demo') || 'playing';
+    // ?clock=12&temperature=F: the phone's other choices.
+    takeChoices({ clock: query.get('clock'), temperature: query.get('temperature') });
     const greek = lang === 'el';
     showStation({
       name: 'ReTune Radio 99.9',

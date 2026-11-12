@@ -479,6 +479,13 @@ body[data-state='paused'] .pill.small {
   font-variant-numeric: tabular-nums;
 }
 
+/* "PM" (or "μ.μ.") after a 12-hour time, smaller. */
+.clock .half {
+  margin-left: 0.22em;
+  font-size: 0.55em;
+  letter-spacing: 0.04em;
+}
+
 /* The weather where the TV is, then the clock. */
 .when {
   display: flex;
