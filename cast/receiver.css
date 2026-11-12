@@ -170,12 +170,13 @@ body:not([data-state='ready'])[data-layout='news'] .news {
   justify-content: center;
 }
 
+/* A thin margin: square logos nearly fill the tile, wide ones don't touch its edges. */
 .tile img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 7%;
+  padding: 3%;
 }
 
 .tile .initials {

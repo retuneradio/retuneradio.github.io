@@ -21,6 +21,9 @@
   // Tuning in shows (the turning dial) only when it takes longer than this: a quick station
   // change or a short gap in the sound doesn't make it flash on and off.
   const TUNING_AFTER_MS = 1000;
+  // Once tuning in shows, the station counts as playing after this long without stalling (radio
+  // streams often play a moment, stop to fill up, then play on): the dial turns once, not twice.
+  const SETTLE_MS = 2000;
   // Everything moves a few pixels this often, so nothing burns into the TV.
   const DRIFT_MS = 60000;
   // The phone sends up to 60 (3 from each outlet): 20 pages, about 10 minutes.
@@ -79,6 +82,7 @@
   let headlines = [];
   let readyTimer = 0;
   let tuningTimer = 0;
+  let settleTimer = 0;
 
   // ---- Fitting the TV, and drifting so nothing burns in ----
 
@@ -326,12 +330,27 @@
     keepAwake(state === 'playing' || state === 'tuning');
   }
 
+  /** Google Cast's player is playing now (in a browser sample: never asked). */
+  function playerPlaying() {
+    return !!player && player.getPlayerState() === cast.framework.messages.PlayerState.PLAYING;
+  }
+
+  function stopSettling() {
+    clearTimeout(settleTimer);
+    settleTimer = 0;
+  }
+
   function setState(next) {
     clearTimeout(readyTimer);
     if (next === 'tuning') {
+      stopSettling();
       if (state !== 'tuning' && !tuningTimer) {
         tuningTimer = setTimeout(() => {
           tuningTimer = 0;
+          // Playing already (a station that came at once): nothing to tune in.
+          if (playerPlaying()) {
+            return;
+          }
           state = 'tuning';
           render();
         }, TUNING_AFTER_MS);
@@ -340,6 +359,21 @@
     }
     clearTimeout(tuningTimer);
     tuningTimer = 0;
+    // Tuning in: "live" only once the station has played a while without stalling, so a stream
+    // that starts, stalls and starts again shows one tuning in, not two.
+    if (next === 'playing' && state === 'tuning' && player) {
+      if (!settleTimer) {
+        settleTimer = setTimeout(() => {
+          settleTimer = 0;
+          if (playerPlaying()) {
+            state = 'playing';
+            render();
+          }
+        }, SETTLE_MS);
+      }
+      return;
+    }
+    stopSettling();
     if (next === 'ready' && station && state !== 'ready') {
       readyTimer = setTimeout(() => {
         // A late "stopped" (say, from a first address that failed) while a station plays on.
@@ -426,6 +460,10 @@
           : playerState === PlayerState.BUFFERING
             ? 'tuning'
             : null;
+    if (shown === 'tuning') {
+      // Stalled while settling: its 2 seconds start again once it plays on.
+      stopSettling();
+    }
     if (shown && shown !== state) {
       setState(shown);
     }
