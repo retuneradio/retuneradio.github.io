@@ -496,24 +496,49 @@ body:not([data-state='ready'])[data-layout='news'] .foot {
   color: var(--accent);
 }
 
-.dots {
+/* Like stories: a bar per page of cards. The page on screen fills up while it stays (receiver.js
+   sets how long); pages already seen are full, the ones to come empty. */
+.progress {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 0 12px;
 }
 
-.dots i {
-  width: 10px;
-  height: 10px;
-  border-radius: 5px;
+.progress i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
   background: var(--dot);
-  transition: width 0.4s ease, background 0.4s ease;
 }
 
-.dots i.on {
-  width: 32px;
+.progress b {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
   background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.progress i.done b {
+  transform: scaleX(1);
+}
+
+.progress i.now b {
+  animation: fill linear forwards;
+}
+
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .news-head .clock {

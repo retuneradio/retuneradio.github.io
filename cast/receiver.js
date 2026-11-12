@@ -366,13 +366,17 @@
     element.style.transform = `translateX(${x}px)`;
   }
 
-  function showDots() {
+  /** The story bars: one per page; the one on screen fills over its stay (made anew, so it starts empty). */
+  function showProgress() {
     const count = pageCount();
-    document.querySelector('.dots').replaceChildren(
+    document.querySelector('.progress').replaceChildren(
       ...Array.from({ length: count > 1 ? count : 0 }, (_, index) => {
-        const dot = document.createElement('i');
-        dot.className = index === page ? 'on' : '';
-        return dot;
+        const bar = document.createElement('i');
+        const fill = document.createElement('b');
+        bar.className = index < page ? 'done' : index === page ? 'now' : '';
+        fill.style.animationDuration = `${PAGE_MS}ms`;
+        bar.appendChild(fill);
+        return bar;
       }),
     );
   }
@@ -393,7 +397,7 @@
     fillPage(pages[front], 0);
     moveTo(pages[front], 0, false);
     prepareNext();
-    showDots();
+    showProgress();
   }
 
   function nextPage() {
@@ -419,7 +423,7 @@
     moveTo(incoming, 0, true);
     moveTo(outgoing, -SLIDE_PX, true);
     front = 1 - front;
-    showDots();
+    showProgress();
     // Once the old page is off screen, it waits on the right with the page after.
     setTimeout(prepareNext, 1000);
   }
