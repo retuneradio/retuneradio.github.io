@@ -23,7 +23,8 @@
   const TUNING_AFTER_MS = 1000;
   // Everything moves a few pixels this often, so nothing burns into the TV.
   const DRIFT_MS = 60000;
-  const MOST_HEADLINES = 21;
+  // The phone sends up to 60 (3 from each outlet): 20 pages, about 10 minutes.
+  const MOST_HEADLINES = 60;
   // A page waiting off the right edge of the screen, and one gone past the left.
   const SLIDE_PX = 1760;
   // Smaller than this, a "photo" is an icon or a tracking pixel: the card stays plain.
