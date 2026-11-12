@@ -360,13 +360,9 @@
   /** Google Cast's player, once casting has started (none in a browser). */
   let player = null;
 
-  /**
-   * The station a media item describes: its name, the genre and city, its logo (and the phone's
-   * language, clock and temperature choices).
-   */
+  /** The station a media item describes: its name, the genre and city, its logo. */
   function stationFrom(media) {
     const metadata = (media && media.metadata) || {};
-    takeChoices((media && media.customData) || {});
     const image = (metadata.images || [])[0];
     return {
       name: String(metadata.title || ''),
@@ -593,6 +589,9 @@
     player.setMessageInterceptor(MessageType.LOAD, request => {
       // The screen never stands in the way of the station playing.
       try {
+        // The phone's language, clock and temperature as the station starts. Only here: the
+        // 2-second check would bring back these first choices after the phone changed them.
+        takeChoices((request.media && request.media.customData) || {});
         showStation(stationFrom(request.media));
         setState('tuning');
       } catch {
