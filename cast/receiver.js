@@ -206,6 +206,11 @@
     clearTimeout(readyTimer);
     if (next === 'ready' && station && state !== 'ready') {
       readyTimer = setTimeout(() => {
+        // A late "stopped" (say, from a first address that failed) while a station plays on.
+        if (playerIsBusy()) {
+          syncWithPlayer();
+          return;
+        }
         state = 'ready';
         render();
       }, READY_AFTER_MS);
@@ -213,6 +218,65 @@
     }
     state = next;
     render();
+  }
+
+  // ---- What Google Cast's player is really doing ----
+
+  /** Google Cast's player, once casting has started (none in a browser). */
+  let player = null;
+
+  /** The station a media item describes: its name, the genre and city, its logo (and the language). */
+  function stationFrom(media) {
+    const metadata = (media && media.metadata) || {};
+    const custom = (media && media.customData) || {};
+    if (custom.lang === 'el' || custom.lang === 'en') {
+      lang = custom.lang;
+    }
+    const image = (metadata.images || [])[0];
+    return {
+      name: String(metadata.title || ''),
+      details: String(metadata.subtitle || ''),
+      logo: image && image.url ? String(image.url) : '',
+    };
+  }
+
+  function playerIsBusy() {
+    if (!player) {
+      return false;
+    }
+    const { PlayerState } = cast.framework.messages;
+    return player.getPlayerState() !== PlayerState.IDLE;
+  }
+
+  /**
+   * The screen made to match the player, whatever messages came in what order: the station it
+   * has (however it was loaded) and whether it plays, pauses or tunes in. Checked on every
+   * status and every 2 seconds.
+   */
+  function syncWithPlayer() {
+    if (!player) {
+      return;
+    }
+    const { PlayerState } = cast.framework.messages;
+    const media = player.getMediaInformation();
+    if (media) {
+      const next = stationFrom(media);
+      if (next.name && (!station || station.name !== next.name || station.logo !== next.logo)) {
+        showStation(next);
+      }
+    }
+    const playerState = player.getPlayerState();
+    const shown =
+      playerState === PlayerState.PLAYING
+        ? 'playing'
+        : playerState === PlayerState.PAUSED
+          ? 'paused'
+          : playerState === PlayerState.BUFFERING
+            ? 'tuning'
+            : null;
+    if (shown && shown !== state) {
+      setState(shown);
+    }
   }
 
   // ---- The news: pages of three cards, sliding from right to left ----
@@ -364,44 +428,27 @@
 
   function startCast() {
     const context = cast.framework.CastReceiverContext.getInstance();
-    const player = context.getPlayerManager();
+    player = context.getPlayerManager();
     const { Command, IdleReason, MessageType, PlayerState } = cast.framework.messages;
     player.setMediaElement(document.getElementById('media'));
 
     // A station loading: what it is, at once (it plays a moment later).
     player.setMessageInterceptor(MessageType.LOAD, request => {
-      const media = request.media || {};
-      const metadata = media.metadata || {};
-      const custom = media.customData || {};
-      if (custom.lang === 'el' || custom.lang === 'en') {
-        lang = custom.lang;
-      }
-      const image = (metadata.images || [])[0];
-      showStation({
-        name: String(metadata.title || ''),
-        details: String(metadata.subtitle || ''),
-        logo: image && image.url ? String(image.url) : '',
-      });
+      showStation(stationFrom(request.media));
       setState('tuning');
       return request;
     });
 
     player.addEventListener(cast.framework.events.EventType.MEDIA_STATUS, event => {
       const status = event.mediaStatus;
-      if (!status) {
-        return;
-      }
-      if (status.playerState === PlayerState.PLAYING) {
-        setState('playing');
-      } else if (status.playerState === PlayerState.PAUSED) {
-        setState('paused');
-      } else if (status.playerState === PlayerState.BUFFERING) {
-        setState('tuning');
-      } else if (status.playerState === PlayerState.IDLE && status.idleReason && status.idleReason !== IdleReason.INTERRUPTED) {
+      if (status && status.playerState === PlayerState.IDLE && status.idleReason && status.idleReason !== IdleReason.INTERRUPTED) {
         // Stopped, ended or failed (a station changing is "interrupted": it goes on tuning).
         setState('ready');
+        return;
       }
+      syncWithPlayer();
     });
+    setInterval(syncWithPlayer, 2000);
 
     context.addCustomMessageListener(NAMESPACE, event => {
       let data = event.data;
