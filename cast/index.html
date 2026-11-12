@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ReTune</title>
+<!-- ReTune's screen on a TV while casting (a Google Cast receiver): the station playing, and
+     the news in big cards when the phone sends it. Opened by the TV, not by people. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap">
+<link rel="stylesheet" href="receiver.css">
+<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+</head>
+<body data-state="ready" data-layout="big">
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <defs>
+    <!-- The O of the wordmark: the dial (centred, so it turns on the spot). -->
+    <symbol id="dial" viewBox="292.6 -0.7 98 98">
+      <path fill="currentColor" d="M378.51,78.33c-9.39,11.52-23.07,17.49-36.86,17.49-10.56,0-21.19-3.5-30.01-10.7-.73-.6-1.44-1.22-2.13-1.85-3.8-3.48-6.9-7.46-9.3-11.76-1.64-2.93-2.96-6-3.93-9.16-4.54-14.69-1.88-31.3,8.56-44.11,9.39-11.52,23.07-17.49,36.86-17.49,4.55,0,9.1.65,13.52,1.97,2.88.85,5.69,1.99,8.41,3.41.58.3,1.16.62,1.73.95l-26.2,30.7,11.91,9.71,26.2-30.71c15.19,17.13,16.18,43.22,1.24,61.53Z"/>
+    </symbol>
+    <symbol id="wordmark" viewBox="0 0 1035.69 166.44">
+      <path fill="#F2F7F4" d="M4.78,4.06h40.86l.82,21.58C54.53,9.17,69.85.77,87.65.77c9.39,0,17.3,2.47,20.59,3.62l-3.3,37.73c-4.28-1.48-11.2-3.62-19.6-3.62-18.62,0-38.22,10.05-38.22,42.67v81.05H4.78V4.06Z"/>
+      <path fill="#F2F7F4" d="M110.84,82.97C111.01,34.7,145.27.77,192.23.77c43.49,0,76.61,29.16,76.61,77.1,0,5.77-.5,11.7-1.49,17.96h-114.33c3.14,18.62,22.08,31.63,42.17,31.63,15.66,0,29.16-7.25,39.37-22.24l29.98,22.4c-14.82,24.71-42.5,38.05-70.34,38.05-50.74,0-83.37-36.57-83.37-82.7ZM229.46,67.49c-2.14-17.63-16.64-31.14-36.74-31.14s-36.73,13.18-39.04,31.14h75.78Z"/>
+      <path fill="#F2F7F4" d="M414.52,4.06h136.58v33.71h-48.2v124.6h-40.17V37.77h-48.2V4.06Z"/>
+      <path fill="#F2F7F4" d="M569.02,100.47V4.06h40.17v96.56c0,17.33,12.45,28.36,31.03,28.36s30.88-11.02,30.88-28.36V4.06h40.17v96.41c0,39.38-27.57,64.89-71.05,64.89s-71.2-25.52-71.2-64.89Z"/>
+      <path fill="#F2F7F4" d="M775.24,162.37h-39.39V4.06h33.4l77.5,95.3V4.06h39.39v158.31h-33.4l-77.5-94.36v94.36Z"/>
+      <path fill="#F2F7F4" d="M910.73,4.06h111.59v33.56h-71.42v28.19h68.99v32.13h-68.99v30.88h80.03v33.55h-120.19V4.06Z"/>
+      <path fill="#00F59F" d="M378.51,78.33c-9.39,11.52-23.07,17.49-36.86,17.49-10.56,0-21.19-3.5-30.01-10.7-.73-.6-1.44-1.22-2.13-1.85-3.8-3.48-6.9-7.46-9.3-11.76-1.64-2.93-2.96-6-3.93-9.16-4.54-14.69-1.88-31.3,8.56-44.11,9.39-11.52,23.07-17.49,36.86-17.49,4.55,0,9.1.65,13.52,1.97,2.88.85,5.69,1.99,8.41,3.41.58.3,1.16.62,1.73.95l-26.2,30.7,11.91,9.71,26.2-30.71c15.19,17.13,16.18,43.22,1.24,61.53Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- The stream plays here, unseen: Google's Cast player drives it. -->
+<video id="media"></video>
+
+<div id="stage">
+  <div class="glow" aria-hidden="true"></div>
+  <svg class="watermark" aria-hidden="true"><use href="#dial"/></svg>
+
+  <!-- Connected, nothing playing yet. -->
+  <section class="screen ready">
+    <svg class="wordmark-big" role="img" aria-label="ReTune"><use href="#wordmark"/></svg>
+    <p class="pick"></p>
+  </section>
+
+  <!-- The station, big (no news). -->
+  <section class="screen big">
+    <div class="tile">
+      <img alt="">
+      <span class="initials"></span>
+      <div class="overlay pause"><span class="pause-disc"><i></i><i></i></span></div>
+      <div class="overlay spin"><span class="spin-disc"><svg><use href="#dial"/></svg></span></div>
+    </div>
+    <div class="texts">
+      <div class="pill"><span class="eq"><i></i><i></i><i></i></span><span class="pill-pause"><i></i><i></i></span><span class="pill-label"></span></div>
+      <h1 class="name"></h1>
+      <p class="details"></p>
+    </div>
+  </section>
+
+  <!-- The news in big cards, the station along the bottom. -->
+  <section class="screen news">
+    <header class="news-head">
+      <h2 class="news-title"></h2>
+      <div class="dots" aria-hidden="true"></div>
+      <span class="clock"></span>
+    </header>
+    <div class="cards">
+      <article class="card featured"><p class="meta"><b class="source"></b><span class="ago"></span></p><p class="headline"></p></article>
+      <div class="side">
+        <article class="card"><p class="meta"><b class="source"></b><span class="ago"></span></p><p class="headline"></p></article>
+        <article class="card"><p class="meta"><b class="source"></b><span class="ago"></span></p><p class="headline"></p></article>
+      </div>
+    </div>
+    <div class="bar">
+      <div class="tile small">
+        <img alt="">
+        <span class="initials"></span>
+        <div class="overlay pause"><span class="pause-disc"><i></i><i></i></span></div>
+        <div class="overlay spin"><span class="spin-disc"><svg><use href="#dial"/></svg></span></div>
+      </div>
+      <div class="bar-texts">
+        <div class="bar-top">
+          <div class="pill small"><span class="eq"><i></i><i></i><i></i></span><span class="pill-pause"><i></i><i></i></span><span class="pill-label"></span></div>
+          <span class="details"></span>
+        </div>
+        <h1 class="name"></h1>
+      </div>
+      <svg class="wordmark-small" role="img" aria-label="ReTune"><use href="#wordmark"/></svg>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <svg class="wordmark-small" role="img" aria-label="ReTune"><use href="#wordmark"/></svg>
+    <span class="clock"></span>
+  </footer>
+</div>
+
+<script src="receiver.js"></script>
+</body>
+</html>

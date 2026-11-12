@@ -1,0 +1,639 @@
+/* ReTune's TV screen. Drawn at 1920×1080 and scaled to the TV (receiver.js). */
+
+:root {
+  --bg: #12130f;
+  --surface: #002629;
+  --text: #f2f7f4;
+  --muted: #93a8a2;
+  --accent: #00f59f;
+  --on-accent: #12130f;
+  --dot: #2a4744;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+#media {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The whole screen, moved a few pixels now and then so nothing burns into the TV. */
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform: translate(-50%, -50%) scale(var(--scale, 1)) translate(var(--dx, 0px), var(--dy, 0px));
+  transition: transform 4s ease-in-out;
+}
+
+.glow {
+  position: absolute;
+  left: -260px;
+  top: -260px;
+  width: 1300px;
+  height: 1300px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 38, 41, 1), rgba(0, 38, 41, 0));
+  transition: left 1s ease, top 1s ease, opacity 1s ease;
+}
+
+body[data-state='ready'] .glow {
+  left: 360px;
+  top: -110px;
+}
+
+body[data-state='paused'] .glow {
+  opacity: 0.55;
+}
+
+.watermark {
+  position: absolute;
+  right: -300px;
+  top: 40px;
+  width: 1000px;
+  height: 1000px;
+  color: var(--accent);
+  opacity: 0.045;
+}
+
+body[data-state='paused'] .watermark {
+  color: var(--muted);
+  opacity: 0.025;
+}
+
+body[data-state='ready'] .watermark,
+body[data-layout='news'] .watermark {
+  display: none;
+}
+
+/* The screens: one shows at a time. */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  animation: show 0.6s ease both;
+}
+
+@keyframes show {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+body[data-state='ready'] .ready {
+  display: flex;
+}
+
+body:not([data-state='ready'])[data-layout='big'] .big {
+  display: flex;
+}
+
+body:not([data-state='ready'])[data-layout='news'] .news {
+  display: block;
+}
+
+/* Ready */
+.ready {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+}
+
+.wordmark-big {
+  display: block;
+  width: 747px;
+  height: 120px;
+}
+
+.pick {
+  margin: 0;
+  font-size: 44px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* The station's logo: on white (most are drawn for a light background). */
+.tile {
+  position: relative;
+  flex-shrink: 0;
+  width: 440px;
+  height: 440px;
+  border-radius: 40px;
+  background: #ffffff;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 7%;
+}
+
+.tile .initials {
+  display: none;
+  font-size: 160px;
+  font-weight: 900;
+  letter-spacing: -4px;
+  color: var(--accent);
+}
+
+.tile.no-logo {
+  background: var(--surface);
+}
+
+.tile.no-logo img {
+  display: none;
+}
+
+.tile.no-logo .initials {
+  display: block;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(18, 19, 15, 0.45);
+}
+
+body[data-state='paused'] .overlay.pause,
+body[data-state='tuning'] .overlay.spin {
+  display: flex;
+}
+
+.pause-disc {
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  background: rgba(242, 247, 244, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.pause-disc i {
+  width: 14px;
+  height: 52px;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+/* Tuning in: ReTune's dial turns, faster then slower, like a hand on a tuning knob. */
+.spin-disc {
+  width: 196px;
+  height: 196px;
+  border-radius: 50%;
+  background: rgba(18, 19, 15, 0.92);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spin-disc svg {
+  display: block;
+  width: 132px;
+  height: 132px;
+  color: var(--accent);
+  animation: spin 1.6s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tile.small {
+  width: 132px;
+  height: 132px;
+  border-radius: 22px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.tile.small .initials {
+  font-size: 52px;
+  letter-spacing: -1px;
+}
+
+.tile.small .pause-disc {
+  width: 64px;
+  height: 64px;
+  gap: 8px;
+}
+
+.tile.small .pause-disc i {
+  width: 7px;
+  height: 24px;
+  border-radius: 2px;
+}
+
+.tile.small .spin-disc {
+  width: 100px;
+  height: 100px;
+}
+
+.tile.small .spin-disc svg {
+  width: 68px;
+  height: 68px;
+}
+
+/* The station, big */
+.big {
+  left: 160px;
+  right: 160px;
+  align-items: center;
+  gap: 88px;
+}
+
+.texts {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 30px;
+}
+
+.name {
+  margin: 0;
+  max-width: 100%;
+  font-size: 124px;
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -2px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.big .name.long {
+  font-size: 96px;
+}
+
+.details {
+  margin: 0;
+  max-width: 100%;
+  font-size: 44px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* LIVE / TUNING IN / PAUSED */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 26px;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  white-space: nowrap;
+}
+
+.pill .eq,
+.pill .pill-pause {
+  display: none;
+  height: 22px;
+}
+
+.pill .eq {
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.pill .eq i {
+  width: 5px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: eq 1.1s ease-in-out infinite;
+}
+
+.pill .eq i:nth-child(2) {
+  animation-delay: -0.4s;
+}
+
+.pill .eq i:nth-child(3) {
+  animation-delay: -0.75s;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.45);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.pill .pill-pause {
+  align-items: center;
+  gap: 5px;
+}
+
+.pill .pill-pause i {
+  width: 5px;
+  height: 18px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+body[data-state='playing'] .pill {
+  padding-left: 22px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+body[data-state='playing'] .pill .eq {
+  display: flex;
+}
+
+body[data-state='paused'] .pill {
+  padding-left: 22px;
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+body[data-state='paused'] .pill .pill-pause {
+  display: flex;
+}
+
+.pill.small {
+  gap: 10px;
+  padding: 6px 16px;
+  font-size: 17px;
+  letter-spacing: 2px;
+}
+
+.pill.small .eq,
+.pill.small .pill-pause {
+  height: 16px;
+}
+
+.pill.small .eq {
+  gap: 3px;
+}
+
+.pill.small .eq i,
+.pill.small .pill-pause i {
+  width: 4px;
+}
+
+.pill.small .pill-pause i {
+  height: 14px;
+}
+
+body[data-state='playing'] .pill.small,
+body[data-state='paused'] .pill.small {
+  padding-left: 14px;
+}
+
+/* The wordmark and the clock along the bottom */
+.foot {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  bottom: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wordmark-small {
+  display: block;
+  width: 249px;
+  height: 40px;
+}
+
+.clock {
+  font-size: 40px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-state='ready'] .foot {
+  justify-content: flex-end;
+}
+
+body[data-state='ready'] .foot .wordmark-small,
+body:not([data-state='ready'])[data-layout='news'] .foot {
+  display: none;
+}
+
+/* News: big cards, the station along the bottom */
+.news-head {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  top: 60px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.news-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.dots {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--dot);
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.dots i.on {
+  width: 32px;
+  background: var(--accent);
+}
+
+.news-head .clock {
+  font-size: 38px;
+}
+
+.cards {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  top: 136px;
+  bottom: 236px;
+  display: flex;
+  gap: 32px;
+  transition: opacity 0.45s ease;
+}
+
+.cards.swap {
+  opacity: 0;
+}
+
+.card {
+  min-width: 0;
+  min-height: 0;
+  padding: 36px 44px;
+  border-radius: 32px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card.featured {
+  flex: 1.45;
+  padding: 52px 56px;
+  border-radius: 36px;
+}
+
+.side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.side .card {
+  flex: 1;
+}
+
+.meta {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.featured .meta {
+  font-size: 28px;
+}
+
+.meta .ago {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.headline {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.featured .headline {
+  font-size: 68px;
+  font-weight: 800;
+  line-height: 1.14;
+  letter-spacing: -1px;
+  -webkit-line-clamp: 5;
+}
+
+.bar {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  bottom: 64px;
+  height: 132px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.bar-texts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.bar-top {
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.bar .details {
+  font-size: 28px;
+}
+
+.bar .name {
+  font-size: 56px;
+  line-height: 1.05;
+  letter-spacing: -1px;
+  -webkit-line-clamp: 1;
+}
+
+.bar .wordmark-small {
+  flex-shrink: 0;
+  width: 224px;
+  height: 36px;
+}
