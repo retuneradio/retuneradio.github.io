@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap">
-<link rel="stylesheet" href="receiver.css?v=5">
+<link rel="stylesheet" href="receiver.css?v=8">
 <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body data-state="ready" data-layout="big">
@@ -35,9 +35,6 @@
 
 <!-- The stream plays here, unseen: Google's Cast player drives it. -->
 <video id="media"></video>
-<!-- While the radio plays: a tiny silent video in the background's colour, so the TV box sees
-     something playing and doesn't start its screensaver (receiver.js keepAwake). -->
-<video id="awake" src="awake.webm" muted loop playsinline aria-hidden="true"></video>
 
 <div id="stage">
   <div class="glow" aria-hidden="true"></div>
@@ -114,6 +111,6 @@
 
 <!-- TEMPORARY: what the TV receives, while we find why it stays on Ready. -->
 <pre id="debug" style="position: fixed; left: 8px; bottom: 8px; margin: 0; padding: 6px 10px; max-width: 70vw; font: 13px/1.35 monospace; color: #f2f7f4; background: rgba(0,0,0,0.75); border-radius: 6px; white-space: pre-wrap; z-index: 9;"></pre>
-<script src="receiver.js?v=7"></script>
+<script src="receiver.js?v=8"></script>
 </body>
 </html>

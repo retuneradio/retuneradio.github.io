@@ -129,9 +129,9 @@
   // ---- Keeping the TV awake while the radio plays ----
 
   // Radio is sound only, so a TV box may think nothing is on and start its screensaver. While a
-  // station plays (or tunes in), the page asks to keep the screen on and plays a tiny silent video
-  // (TV boxes don't sleep during a video). Paused or stopped: the TV may sleep as it likes.
-  const awakeVideo = document.getElementById('awake');
+  // station plays (or tunes in), the page asks to keep the screen on. Paused or stopped: the TV may
+  // sleep as it likes. (Not a hidden looping video: on a TV box it took over the screen, and the
+  // page stopped updating behind it.)
   let awake = false;
   let wakeLock = null;
   let wakeLockAsked = false;
@@ -139,9 +139,6 @@
   function keepAwake(on) {
     awake = on;
     if (on) {
-      if (awakeVideo.paused) {
-        awakeVideo.play().catch(() => {});
-      }
       if (!wakeLock && !wakeLockAsked && navigator.wakeLock && document.visibilityState === 'visible') {
         wakeLockAsked = true;
         navigator.wakeLock
@@ -161,7 +158,6 @@
           });
       }
     } else {
-      awakeVideo.pause();
       if (wakeLock) {
         wakeLock.release().catch(() => {});
         wakeLock = null;
