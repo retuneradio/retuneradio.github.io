@@ -2,8 +2,9 @@
  * ReTune's TV screen while casting (a Google Cast receiver, registered in the Cast SDK
  * Developer Console). The phone loads the station (its name, the genre and city, its logo,
  * ReTune's language) and, over ReTune's own line, the latest news headlines (the outlet's
- * name, the title, its time). Four states: ready (nothing playing), tuning in, playing,
- * paused; with headlines, the news shows in big cards and the station along the bottom.
+ * name, the title, its time, its photo). Four states: ready (nothing playing), tuning in,
+ * playing, paused; with headlines, the news shows in big cards (three at a time, sliding in
+ * from the right) and the station along the bottom.
  *
  * Opened in a browser with ?demo=playing|tuning|paused|ready|news, it shows a sample instead.
  */
@@ -11,8 +12,8 @@
   'use strict';
 
   const NAMESPACE = 'urn:x-cast:com.retune.radio';
-  // A page of three cards, then the next.
-  const PAGE_MS = 12000;
+  // How long a page of three cards stays before the next slides in.
+  const PAGE_MS = 30000;
   // Headlines older than this aren't news any more (the phone may have gone quiet).
   const MAX_AGE_MS = 12 * 3600000;
   // Stopped or failed: the Ready screen after a moment (the phone may try another address).
@@ -20,6 +21,10 @@
   // Everything moves a few pixels this often, so nothing burns into the TV.
   const DRIFT_MS = 60000;
   const MOST_HEADLINES = 21;
+  // A page waiting off the right edge of the screen, and one gone past the left.
+  const SLIDE_PX = 1760;
+  // Smaller than this, a "photo" is an icon or a tracking pixel: the card stays plain.
+  const SMALLEST_PHOTO = 320;
 
   const hours = minutes => Math.floor(minutes / 60);
   const WORDS = {
@@ -62,10 +67,12 @@
   let state = 'ready';
   /** { name, details, logo } of the station loaded last, or null. */
   let station = null;
-  /** [{ source, title, time }], newest first; none: no news on the TV. */
+  /** [{ source, title, time, image? }], newest first; none: no news on the TV. */
   let headlines = [];
-  let page = 0;
   let readyTimer = 0;
+
+  // ---- Fitting the TV, and drifting so nothing burns in ----
+
   /** The 1920×1080 drawing, scaled to the TV, and how far it has drifted. */
   let scale = 0;
   let dx = 0;
@@ -107,6 +114,8 @@
     setText('.clock', time);
   }
 
+  // ---- The station ----
+
   /** A station without a logo shows its initials: "Radio Aegean 101.4" → "RA". */
   function initials(name) {
     const words = name.split(/\s+/).filter(word => /^\p{L}/u.test(word));
@@ -133,11 +142,6 @@
         image.removeAttribute('src');
       }
     });
-  }
-
-  function currentNews() {
-    const now = Date.now();
-    return headlines.filter(item => !item.time || now - item.time < MAX_AGE_MS);
   }
 
   function render() {
@@ -168,30 +172,65 @@
     render();
   }
 
-  /** The page of cards now: the newest first, three at a time, the dots saying where. */
-  function showPage() {
-    const list = currentNews();
-    const pages = Math.ceil(list.length / 3);
-    if (pages === 0) {
+  // ---- The news: pages of three cards, sliding from right to left ----
+
+  const pages = all('.page');
+  /** Which of the two pages is on screen; the other waits off the right edge, filled. */
+  let front = 0;
+  /** The page of headlines on screen (0: the newest three). */
+  let page = 0;
+  let pageTimer = 0;
+
+  function currentNews() {
+    const now = Date.now();
+    return headlines.filter(item => !item.time || now - item.time < MAX_AGE_MS);
+  }
+
+  function pageCount() {
+    return Math.ceil(currentNews().length / 3);
+  }
+
+  /** One card: the outlet, how long ago, the headline, and its photo once it has loaded. */
+  function fillCard(card, item) {
+    card.hidden = !item;
+    if (!item) {
       return;
     }
-    page %= pages;
-    const items = list.slice(page * 3, page * 3 + 3);
-    const words = WORDS[lang];
-    all('.card').forEach((card, index) => {
-      const item = items[index];
-      card.hidden = !item;
-      if (!item) {
-        return;
-      }
-      const minutes = Math.max(0, Math.floor((Date.now() - item.time) / 60000));
-      card.querySelector('.source').textContent = item.source;
-      card.querySelector('.ago').textContent = item.time ? ` · ${words.ago(minutes)}` : '';
-      card.querySelector('.headline').textContent = item.title;
-    });
-    document.querySelector('.side').hidden = items.length < 2;
+    const minutes = Math.max(0, Math.floor((Date.now() - item.time) / 60000));
+    card.querySelector('.source').textContent = item.source;
+    card.querySelector('.ago').textContent = item.time ? ` · ${WORDS[lang].ago(minutes)}` : '';
+    card.querySelector('.headline').textContent = item.title;
+    const photo = card.querySelector('.photo');
+    const show = () => card.classList.toggle('has-photo', photo.naturalWidth >= SMALLEST_PHOTO);
+    photo.onload = show;
+    photo.onerror = () => card.classList.remove('has-photo');
+    if (!item.image) {
+      photo.removeAttribute('src');
+      card.classList.remove('has-photo');
+    } else if (photo.getAttribute('src') === item.image && photo.complete) {
+      show();
+    } else {
+      card.classList.remove('has-photo');
+      photo.src = item.image;
+    }
+  }
+
+  function fillPage(element, number) {
+    const list = currentNews();
+    const items = list.slice(number * 3, number * 3 + 3);
+    element.querySelectorAll('.card').forEach((card, index) => fillCard(card, items[index]));
+    element.querySelector('.side').hidden = items.length < 2;
+  }
+
+  function moveTo(element, x, animate) {
+    element.style.transition = animate ? '' : 'none';
+    element.style.transform = `translateX(${x}px)`;
+  }
+
+  function showDots() {
+    const count = pageCount();
     document.querySelector('.dots').replaceChildren(
-      ...Array.from({ length: pages > 1 ? pages : 0 }, (_, index) => {
+      ...Array.from({ length: count > 1 ? count : 0 }, (_, index) => {
         const dot = document.createElement('i');
         dot.className = index === page ? 'on' : '';
         return dot;
@@ -199,39 +238,86 @@
     );
   }
 
+  /** The waiting page gets the next headlines, so its photos load before it slides in. */
+  function prepareNext() {
+    const count = pageCount();
+    const back = pages[1 - front];
+    moveTo(back, SLIDE_PX, false);
+    if (count > 1) {
+      fillPage(back, (page + 1) % count);
+    }
+  }
+
+  /** At once, no sliding: the first page (new headlines, or the news appearing). */
+  function showFirstPage() {
+    page = 0;
+    fillPage(pages[front], 0);
+    moveTo(pages[front], 0, false);
+    prepareNext();
+    showDots();
+  }
+
   function nextPage() {
-    if (body.dataset.layout !== 'news' || state === 'ready') {
+    clearTimeout(pageTimer);
+    pageTimer = setTimeout(nextPage, PAGE_MS);
+    const count = pageCount();
+    if (count === 0 || body.dataset.layout !== 'news' || state === 'ready') {
       return;
     }
-    if (Math.ceil(currentNews().length / 3) <= 1) {
+    if (count === 1) {
       // One page: its times still move on.
-      showPage();
-      render();
+      fillPage(pages[front], 0);
       return;
     }
-    const cards = document.querySelector('.cards');
-    cards.classList.add('swap');
-    setTimeout(() => {
-      page += 1;
-      showPage();
-      render();
-      cards.classList.remove('swap');
-    }, 450);
+    const incoming = pages[1 - front];
+    const outgoing = pages[front];
+    page = (page + 1) % count;
+    // Filled already (prepareNext); again in case the headlines' times moved on.
+    fillPage(incoming, page);
+    moveTo(incoming, SLIDE_PX, false);
+    // The browser takes the starting place in before the slide begins.
+    void incoming.offsetWidth;
+    moveTo(incoming, 0, true);
+    moveTo(outgoing, -SLIDE_PX, true);
+    front = 1 - front;
+    showDots();
+    // Once the old page is off screen, it waits on the right with the page after.
+    setTimeout(prepareNext, 1000);
+  }
+
+  /** A photo's address from the phone: on the web (the sample's own drawings too, in a browser). */
+  function photoUrl(value, sample) {
+    if (typeof value !== 'string') {
+      return '';
+    }
+    if (sample && value.startsWith('data:image/')) {
+      return value;
+    }
+    return /^https?:\/\//i.test(value) && value.length <= 600 ? value : '';
   }
 
   /** The phone's news: the headlines (none: no news on the TV) and ReTune's language. */
-  function onNews(data) {
+  function onNews(data, sample = false) {
     if (data.lang === 'el' || data.lang === 'en') {
       lang = data.lang;
     }
     headlines = (Array.isArray(data.headlines) ? data.headlines : [])
       .filter(item => item && typeof item.title === 'string' && typeof item.source === 'string')
       .slice(0, MOST_HEADLINES)
-      .map(item => ({ source: item.source.slice(0, 40), title: item.title.slice(0, 240), time: Number(item.time) || 0 }));
-    page = 0;
-    showPage();
+      .map(item => ({
+        source: item.source.slice(0, 40),
+        title: item.title.slice(0, 240),
+        time: Number(item.time) || 0,
+        image: photoUrl(item.image, sample),
+      }));
+    showFirstPage();
     render();
+    // A full stay for the first page.
+    clearTimeout(pageTimer);
+    pageTimer = setTimeout(nextPage, PAGE_MS);
   }
+
+  // ---- Google Cast ----
 
   function startCast() {
     const context = cast.framework.CastReceiverContext.getInstance();
@@ -295,7 +381,19 @@
     context.start(options);
   }
 
-  /** In a browser: a sample of each screen, to look at the design. */
+  // ---- In a browser: a sample of each screen, to look at the design ----
+
+  /** A made-up "photo" (sky, sun, hills) for the sample cards. */
+  function samplePhoto(sky, ground) {
+    const svg =
+      "<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='900'>" +
+      `<defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='${sky}'/>` +
+      "<stop offset='1' stop-color='#f3d9a4'/></linearGradient></defs>" +
+      "<rect width='1600' height='900' fill='url(#s)'/><circle cx='1150' cy='300' r='130' fill='#fff4d6'/>" +
+      `<path d='M0 620 Q400 470 800 600 T1600 560 V900 H0 Z' fill='${ground}'/></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
+
   function startDemo() {
     const demo = new URLSearchParams(location.search).get('demo') || 'playing';
     const greek = lang === 'el';
@@ -306,6 +404,14 @@
     });
     if (demo === 'news') {
       const now = Date.now();
+      const photos = [
+        samplePhoto('#5b8fb9', '#3f6b4a'),
+        samplePhoto('#8a6fb0', '#5b4a3a'),
+        samplePhoto('#3e7fa6', '#2f5a6b'),
+        '',
+        samplePhoto('#c27a5a', '#6b4a2f'),
+        '',
+      ];
       onNews({
         type: 'news',
         lang,
@@ -315,8 +421,9 @@
             ? `Δείγμα τίτλου ${index + 1}: εδώ φαίνονται οι τελευταίες ειδήσεις, σε μεγάλες κάρτες`
             : `Sample headline ${index + 1}: the latest news shows here, in big cards`,
           time: now - minutes * 60000,
+          image: photos[index],
         })),
-      });
+      }, true);
     }
     state = demo === 'news' ? 'playing' : ['playing', 'tuning', 'paused', 'ready'].includes(demo) ? demo : 'playing';
     render();
@@ -333,7 +440,6 @@
   setInterval(fit, 2000);
   setInterval(drift, DRIFT_MS);
   setInterval(clock, 10000);
-  setInterval(nextPage, PAGE_MS);
   render();
 
   if (new URLSearchParams(location.search).has('demo') || typeof cast === 'undefined') {
