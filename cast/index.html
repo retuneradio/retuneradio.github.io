@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap">
-<link rel="stylesheet" href="receiver.css?v=11">
+<link rel="stylesheet" href="receiver.css?v=12">
 <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body data-state="ready" data-layout="big">
@@ -30,6 +30,16 @@
       <path fill="#F2F7F4" d="M910.73,4.06h111.59v33.56h-71.42v28.19h68.99v32.13h-68.99v30.88h80.03v33.55h-120.19V4.06Z"/>
       <path fill="#00F59F" d="M378.51,78.33c-9.39,11.52-23.07,17.49-36.86,17.49-10.56,0-21.19-3.5-30.01-10.7-.73-.6-1.44-1.22-2.13-1.85-3.8-3.48-6.9-7.46-9.3-11.76-1.64-2.93-2.96-6-3.93-9.16-4.54-14.69-1.88-31.3,8.56-44.11,9.39-11.52,23.07-17.49,36.86-17.49,4.55,0,9.1.65,13.52,1.97,2.88.85,5.69,1.99,8.41,3.41.58.3,1.16.62,1.73.95l-26.2,30.7,11.91,9.71,26.2-30.71c15.19,17.13,16.18,43.22,1.24,61.53Z"/>
     </symbol>
+    <!-- Weather symbols, drawn as lines in the text's colour (receiver.js weatherIcon). -->
+    <symbol id="wx-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></g></symbol>
+    <symbol id="wx-moon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></g></symbol>
+    <symbol id="wx-cloud" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19a5 5 0 0 1-.6-9.96A6.5 6.5 0 0 1 18.9 10.5 4.25 4.25 0 0 1 17.5 19z"/></g></symbol>
+    <symbol id="wx-cloud-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v1.5M2.5 8H4M4.1 4.1l1.06 1.06M11.9 4.1l-1.06 1.06"/><path d="M5.4 10.6A3 3 0 0 1 10.6 6"/><path d="M10 20a4 4 0 0 1-.5-7.97A5.2 5.2 0 0 1 19.5 13a3.5 3.5 0 0 1-.5 7z"/></g></symbol>
+    <symbol id="wx-cloud-moon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 6.5A4.5 4.5 0 0 1 4 11a5 5 0 0 0 5-8 4.5 4.5 0 0 1 1.5 3.5z"/><path d="M10 20a4 4 0 0 1-.5-7.97A5.2 5.2 0 0 1 19.5 13a3.5 3.5 0 0 1-.5 7z"/></g></symbol>
+    <symbol id="wx-rain" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a5 5 0 0 1-.6-9.96A6.5 6.5 0 0 1 18.9 6.5 4.25 4.25 0 0 1 17.5 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/></g></symbol>
+    <symbol id="wx-snow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a5 5 0 0 1-.6-9.96A6.5 6.5 0 0 1 18.9 6.5 4.25 4.25 0 0 1 17.5 15z"/><path d="M8 19h.01M12 21h.01M16 19h.01M10 22h.01M14 22h.01"/></g></symbol>
+    <symbol id="wx-storm" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15a5 5 0 0 1-.6-9.96A6.5 6.5 0 0 1 18.9 6.5 4.25 4.25 0 0 1 17.5 15z"/><path d="M13 13l-2 4h3l-2 4"/></g></symbol>
+    <symbol id="wx-fog" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16M3 12h18M5 16h14M8 20h8"/></g></symbol>
   </defs>
 </svg>
 
@@ -66,7 +76,10 @@
     <header class="news-head">
       <h2 class="news-title"></h2>
       <div class="progress" aria-hidden="true"></div>
-      <span class="clock"></span>
+      <div class="when">
+        <span class="weather" hidden><svg class="wx" aria-hidden="true"><use href="#wx-sun"/></svg><span class="temp"></span></span>
+        <span class="clock"></span>
+      </div>
     </header>
     <!-- Two pages of three cards: one on screen, the next waiting off the right edge. -->
     <div class="cards">
@@ -105,10 +118,13 @@
 
   <footer class="foot">
     <svg class="wordmark-small" role="img" aria-label="ReTune"><use href="#wordmark"/></svg>
-    <span class="clock"></span>
+    <div class="when">
+      <span class="weather" hidden><svg class="wx" aria-hidden="true"><use href="#wx-sun"/></svg><span class="temp"></span></span>
+      <span class="clock"></span>
+    </div>
   </footer>
 </div>
 
-<script src="receiver.js?v=11"></script>
+<script src="receiver.js?v=12"></script>
 </body>
 </html>

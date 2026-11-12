@@ -114,6 +114,101 @@
     setText('.clock', `${two(now.getHours())}:${two(now.getMinutes())}`);
   }
 
+  // ---- The weather where the TV is, next to the clock ----
+
+  // The TV's approximate place, from its internet connection (GeoJS), kept for a while; the
+  // weather there from MET Norway (free, credited in the privacy policy), fresh every half hour.
+  // Rounded to about a kilometre: no closer than a weather forecast needs. Nothing works: no
+  // weather shows, the clock stays on its own.
+  const AREA_KEY = 'retune.area';
+  const AREA_MS = 12 * 3600000;
+  const WEATHER_MS = 30 * 60000;
+  /** { icon, temp } now, or null. */
+  let weather = null;
+
+  async function findArea() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(AREA_KEY) || 'null');
+      if (saved && Date.now() - saved.at < AREA_MS) {
+        return saved;
+      }
+    } catch {
+      // No saved place: found again.
+    }
+    const response = await fetch('https://get.geojs.io/v1/ip/geo.json');
+    const data = await response.json();
+    const lat = Number(data.latitude);
+    const lon = Number(data.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      throw new Error('no place');
+    }
+    const area = { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100, at: Date.now() };
+    try {
+      localStorage.setItem(AREA_KEY, JSON.stringify(area));
+    } catch {
+      // Found again next time.
+    }
+    return area;
+  }
+
+  /** MET Norway's weather symbol ("partlycloudy_night", "lightrainshowers_day"…) as one of ours. */
+  function weatherIcon(code) {
+    const night = /_night$/.test(code);
+    const base = code.replace(/_(day|night|polartwilight)$/, '');
+    if (/thunder/.test(base)) {
+      return 'storm';
+    }
+    if (/snow|sleet/.test(base)) {
+      return 'snow';
+    }
+    if (/rain|showers/.test(base)) {
+      return 'rain';
+    }
+    if (base === 'fog') {
+      return 'fog';
+    }
+    if (base === 'clearsky') {
+      return night ? 'moon' : 'sun';
+    }
+    if (base === 'fair' || base === 'partlycloudy') {
+      return night ? 'cloud-moon' : 'cloud-sun';
+    }
+    return 'cloud';
+  }
+
+  async function updateWeather() {
+    try {
+      const area = await findArea();
+      const response = await fetch(
+        `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${area.lat}&lon=${area.lon}`,
+      );
+      const data = await response.json();
+      const now = data.properties.timeseries[0].data;
+      const temp = Number(now.instant.details.air_temperature);
+      const next = now.next_1_hours || now.next_6_hours || {};
+      if (Number.isFinite(temp)) {
+        weather = { icon: weatherIcon((next.summary && next.summary.symbol_code) || ''), temp };
+      }
+    } catch {
+      // The last weather stays (or none shows).
+    }
+    showWeather();
+  }
+
+  function showWeather() {
+    // °F on a TV set to US English, else °C.
+    const fahrenheit = /^en-US/i.test(navigator.language || '');
+    all('.weather').forEach(element => {
+      element.hidden = !weather;
+      if (!weather) {
+        return;
+      }
+      element.querySelector('use').setAttribute('href', `#wx-${weather.icon}`);
+      const value = fahrenheit ? (weather.temp * 9) / 5 + 32 : weather.temp;
+      element.querySelector('.temp').textContent = `${Math.round(value)}°`;
+    });
+  }
+
   // ---- Keeping the TV awake while the radio plays ----
 
   // Radio is sound only, so a TV box may think nothing is on and start its screensaver. While a
@@ -576,6 +671,8 @@
   setInterval(fit, 2000);
   setInterval(drift, DRIFT_MS);
   setInterval(clock, 10000);
+  updateWeather();
+  setInterval(updateWeather, WEATHER_MS);
   render();
 
   if (new URLSearchParams(location.search).has('demo') || typeof cast === 'undefined') {

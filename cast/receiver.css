@@ -467,6 +467,34 @@ body[data-state='paused'] .pill.small {
   font-variant-numeric: tabular-nums;
 }
 
+/* The weather where the TV is, then the clock. */
+.when {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.weather {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 40px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.weather .wx {
+  display: block;
+  width: 44px;
+  height: 44px;
+  color: var(--text);
+}
+
+.news-head .weather {
+  font-size: 38px;
+}
+
 body[data-state='ready'] .foot {
   justify-content: flex-end;
 }
