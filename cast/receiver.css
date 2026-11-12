@@ -1,5 +1,15 @@
 /* ReTune's TV screen. Drawn at 1920×1080 and scaled to the TV (receiver.js). */
 
+/* Google Sans (SIL Open Font License, fonts/OFL.txt), cut down to Latin, Greek, Cyrillic and
+   common signs, weights 400 to 700. Anything asked bolder shows at 700: never a fake bold. */
+@font-face {
+  font-family: 'Google Sans';
+  src: url('fonts/google-sans.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #12130f;
   --surface: #002629;
@@ -28,7 +38,9 @@ body {
 }
 
 body {
-  font-family: 'Roboto', sans-serif;
+  /* A letter Google Sans lacks comes from the TV's own font (Roboto on Android TV). */
+  font-family: 'Google Sans', 'Roboto', sans-serif;
+  font-synthesis: none;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
@@ -486,9 +498,8 @@ body[data-state='paused'] .pill.small {
 
 .weather .wx {
   display: block;
-  width: 44px;
-  height: 44px;
-  color: var(--text);
+  width: 46px;
+  height: 46px;
 }
 
 .news-head .weather {
