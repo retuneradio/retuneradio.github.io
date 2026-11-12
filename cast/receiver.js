@@ -66,15 +66,34 @@
   let headlines = [];
   let page = 0;
   let readyTimer = 0;
+  /** The 1920×1080 drawing, scaled to the TV, and how far it has drifted. */
+  let scale = 0;
+  let dx = 0;
+  let dy = 0;
 
+  function place(animate) {
+    stage.style.transition = animate ? 'transform 4s ease-in-out' : 'none';
+    stage.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${dx}px, ${dy}px)`;
+  }
+
+  // The size the page really has (what centring it uses), not what the window claims: some TV
+  // boxes give the page 1280×720 while saying 1920×1080 at first. Measured again now and then.
   function fit() {
-    stage.style.setProperty('--scale', String(Math.min(innerWidth / 1920, innerHeight / 1080)));
+    const root = document.documentElement;
+    const width = root.clientWidth || innerWidth;
+    const height = root.clientHeight || innerHeight;
+    const next = Math.min(width / 1920, height / 1080);
+    if (next > 0 && Math.abs(next - scale) > 0.001) {
+      scale = next;
+      place(false);
+    }
   }
 
   function drift() {
-    const shift = range => `${Math.round((Math.random() * 2 - 1) * range)}px`;
-    stage.style.setProperty('--dx', shift(16));
-    stage.style.setProperty('--dy', shift(10));
+    const shift = range => Math.round((Math.random() * 2 - 1) * range);
+    dx = shift(16);
+    dy = shift(10);
+    place(true);
   }
 
   function clock() {
@@ -305,6 +324,13 @@
 
   fit();
   addEventListener('resize', fit);
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', fit);
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(fit).observe(document.documentElement);
+  }
+  setInterval(fit, 2000);
   setInterval(drift, DRIFT_MS);
   setInterval(clock, 10000);
   setInterval(nextPage, PAGE_MS);

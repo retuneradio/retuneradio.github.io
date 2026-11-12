@@ -41,7 +41,8 @@ body {
   pointer-events: none;
 }
 
-/* The whole screen, moved a few pixels now and then so nothing burns into the TV. */
+/* The whole screen: scaled to the TV and moved a few pixels now and then, so nothing burns
+   into it (receiver.js sets the transform). */
 #stage {
   position: absolute;
   left: 50%;
@@ -49,8 +50,7 @@ body {
   width: 1920px;
   height: 1080px;
   overflow: hidden;
-  transform: translate(-50%, -50%) scale(var(--scale, 1)) translate(var(--dx, 0px), var(--dy, 0px));
-  transition: transform 4s ease-in-out;
+  transform: translate(-50%, -50%);
 }
 
 .glow {
