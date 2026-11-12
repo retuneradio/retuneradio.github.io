@@ -134,7 +134,10 @@
     });
   }
 
-  /** The phone's choices for the clock (12 or 24 hours) and the weather (°C or °F), if it sent them. */
+  /**
+   * The phone's choices, if it sent them: the clock (12 or 24 hours), the weather (°C or °F) and
+   * the city it's for (none: where the TV is).
+   */
   function takeChoices(data) {
     if (data.lang === 'el' || data.lang === 'en') {
       lang = data.lang;
@@ -145,23 +148,42 @@
     if (data.temperature === 'C' || data.temperature === 'F') {
       fahrenheit = data.temperature === 'F';
     }
+    const place = data.place;
+    if (place === null || (place && Number.isFinite(place.lat) && Number.isFinite(place.lon))) {
+      const next = place ? { lat: Math.round(place.lat * 100) / 100, lon: Math.round(place.lon * 100) / 100 } : null;
+      const key = next ? `${next.lat},${next.lon}` : '';
+      if (key !== chosenKey) {
+        chosenKey = key;
+        chosenArea = next;
+        // Another city: its weather at once (nothing meanwhile, not the last city's).
+        weather = null;
+        updateWeather();
+      }
+    }
     clock();
     showWeather();
   }
 
-  // ---- The weather where the TV is, next to the clock ----
+  // ---- The weather where the TV is (or in the city chosen on the phone), next to the clock ----
 
-  // The TV's approximate place, from its internet connection (GeoJS), kept for a while; the
-  // weather there from MET Norway (free, credited in the privacy policy), fresh every half hour.
-  // Rounded to about a kilometre: no closer than a weather forecast needs. Nothing works: no
-  // weather shows, the clock stays on its own.
+  // The TV's approximate place, from its internet connection (GeoJS), kept for a while, unless
+  // the phone chose a city (Settings → TV screen → Weather); the weather there from MET Norway
+  // (free, credited in the privacy policy), fresh every half hour. Rounded to about a kilometre:
+  // no closer than a weather forecast needs. Nothing works: no weather shows, the clock stays on
+  // its own.
   const AREA_KEY = 'retune.area';
   const AREA_MS = 12 * 3600000;
   const WEATHER_MS = 30 * 60000;
   /** { icon, temp } now, or null. */
   let weather = null;
+  /** The phone's city ({ lat, lon }), or null: where the TV is. */
+  let chosenArea = null;
+  let chosenKey = '';
 
   async function findArea() {
+    if (chosenArea) {
+      return chosenArea;
+    }
     try {
       const saved = JSON.parse(localStorage.getItem(AREA_KEY) || 'null');
       if (saved && Date.now() - saved.at < AREA_MS) {
@@ -212,12 +234,17 @@
   }
 
   async function updateWeather() {
+    // The city asked for: a late answer for another one (changed meanwhile) is dropped.
+    const asked = chosenKey;
     try {
       const area = await findArea();
       const response = await fetch(
         `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${area.lat}&lon=${area.lon}`,
       );
       const data = await response.json();
+      if (asked !== chosenKey) {
+        return;
+      }
       const now = data.properties.timeseries[0].data;
       const temp = Number(now.instant.details.air_temperature);
       const next = now.next_1_hours || now.next_6_hours || {};
