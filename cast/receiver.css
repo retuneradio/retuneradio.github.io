@@ -41,6 +41,17 @@ body {
   pointer-events: none;
 }
 
+/* Kept on screen (a hidden video may not count as playing), tiny, in the background's colour. */
+#awake {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
 /* The whole screen: scaled to the TV and moved a few pixels now and then, so nothing burns
    into it (receiver.js sets the transform). */
 #stage {

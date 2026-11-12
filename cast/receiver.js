@@ -110,6 +110,52 @@
     setText('.clock', `${two(now.getHours())}:${two(now.getMinutes())}`);
   }
 
+  // ---- Keeping the TV awake while the radio plays ----
+
+  // Radio is sound only, so a TV box may think nothing is on and start its screensaver. While a
+  // station plays (or tunes in), the page asks to keep the screen on and plays a tiny silent video
+  // (TV boxes don't sleep during a video). Paused or stopped: the TV may sleep as it likes.
+  const awakeVideo = document.getElementById('awake');
+  let awake = false;
+  let wakeLock = null;
+  let wakeLockAsked = false;
+
+  function keepAwake(on) {
+    awake = on;
+    if (on) {
+      if (awakeVideo.paused) {
+        awakeVideo.play().catch(() => {});
+      }
+      if (!wakeLock && !wakeLockAsked && navigator.wakeLock && document.visibilityState === 'visible') {
+        wakeLockAsked = true;
+        navigator.wakeLock
+          .request('screen')
+          .then(lock => {
+            wakeLock = lock;
+            lock.addEventListener('release', () => {
+              wakeLock = null;
+            });
+            if (!awake) {
+              lock.release().catch(() => {});
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            wakeLockAsked = false;
+          });
+      }
+    } else {
+      awakeVideo.pause();
+      if (wakeLock) {
+        wakeLock.release().catch(() => {});
+        wakeLock = null;
+      }
+    }
+  }
+
+  // The browser lets go of the screen when the page is hidden: asked again on its return.
+  document.addEventListener('visibilitychange', () => keepAwake(awake));
+
   // ---- The station ----
 
   /** A station without a logo shows its initials: "Radio Aegean 101.4" → "RA". */
@@ -153,6 +199,7 @@
       setText('.bar .details', station.details);
     }
     clock();
+    keepAwake(state === 'playing' || state === 'tuning');
   }
 
   function setState(next) {
