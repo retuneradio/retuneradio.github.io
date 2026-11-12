@@ -55,22 +55,6 @@
     },
   };
 
-  // TEMPORARY: the last few things the TV received, in a corner (to find why it stays on Ready).
-  const debugBox = document.getElementById('debug');
-  const debugLines = [];
-  function note(text) {
-    if (!debugBox) {
-      return;
-    }
-    const now = new Date();
-    const time = [now.getHours(), now.getMinutes(), now.getSeconds()].map(v => String(v).padStart(2, '0')).join(':');
-    debugLines.push(`${time} ${text}`);
-    debugLines.splice(0, Math.max(0, debugLines.length - 10));
-    debugBox.textContent = debugLines.join('\n');
-  }
-  window.addEventListener('error', event => note(`JS ERROR ${event.message} @${event.lineno}`));
-  window.addEventListener('unhandledrejection', event => note(`REJECTED ${event.reason}`));
-
   const body = document.body;
   const stage = document.getElementById('stage');
   const all = selector => Array.from(document.querySelectorAll(selector));
@@ -236,7 +220,6 @@
 
   /** Google Cast's player, once casting has started (none in a browser). */
   let player = null;
-  let lastPlayerState = null;
 
   /** The station a media item describes: its name, the genre and city, its logo (and the language). */
   function stationFrom(media) {
@@ -279,10 +262,6 @@
       }
     }
     const playerState = player.getPlayerState();
-    if (playerState !== lastPlayerState) {
-      note(`player ${playerState} (screen: ${state})`);
-      lastPlayerState = playerState;
-    }
     const shown =
       playerState === PlayerState.PLAYING
         ? 'playing'
@@ -451,28 +430,18 @@
 
     // A station loading: what it is, at once (it plays a moment later).
     player.setMessageInterceptor(MessageType.LOAD, request => {
+      // The screen never stands in the way of the station playing.
       try {
-        const media = request.media || {};
-        note(`LOAD ${(media.metadata && media.metadata.title) || '?'} ${media.contentType || ''} ${String(media.contentId || media.contentUrl || '').slice(0, 60)}`);
         showStation(stationFrom(request.media));
         setState('tuning');
-      } catch (error) {
-        note(`LOAD failed here: ${error}`);
+      } catch {
+        // The 2-second check (syncWithPlayer) puts the screen right.
       }
       return request;
     });
 
-    player.addEventListener(cast.framework.events.EventType.ERROR, event =>
-      note(`PLAYER ERROR ${event.detailedErrorCode || ''} ${event.error ? event.error.reason || '' : ''}`),
-    );
-    context.addEventListener(cast.framework.system.EventType.SENDER_CONNECTED, () => note('phone connected'));
-    context.addEventListener(cast.framework.system.EventType.SENDER_DISCONNECTED, () => note('phone disconnected'));
-
     player.addEventListener(cast.framework.events.EventType.MEDIA_STATUS, event => {
       const status = event.mediaStatus;
-      if (status) {
-        note(`status ${status.playerState} ${status.idleReason || ''}`);
-      }
       if (status && status.playerState === PlayerState.IDLE && status.idleReason && status.idleReason !== IdleReason.INTERRUPTED) {
         // Stopped, ended or failed (a station changing is "interrupted": it goes on tuning).
         setState('ready');
@@ -491,7 +460,6 @@
           return;
         }
       }
-      note(`message ${data && data.type} ${data && Array.isArray(data.headlines) ? data.headlines.length : ''}`);
       if (data && data.type === 'news') {
         onNews(data);
       }
@@ -502,7 +470,6 @@
     // Live radio: pause and volume, no seeking.
     options.supportedCommands = Command.PAUSE | Command.STREAM_VOLUME | Command.STREAM_MUTE;
     context.start(options);
-    note(`started (v7, ${innerWidth}x${innerHeight}, ${navigator.userAgent.match(/Chrome\/[\d.]+/) || ''})`);
   }
 
   // ---- In a browser: a sample of each screen, to look at the design ----
